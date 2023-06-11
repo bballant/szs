@@ -1,79 +1,49 @@
 import * as util from "./util.js";
 
 let WINDOW_RATIO = 3 / 2;
-
-type Suit = 'Spades' | 'Hearts' | 'Diamonds' | 'Clubs';
-
-type Rank = 'Ace' | 'Two' | 'Three' | 'Four' | 'Five' | 'Six' | 'Seven'
-    | 'Eight' | 'Nine' | 'Ten' | 'Jack' | 'Queen' | 'King';
+type Suit = "blue" | "black" | "orange";
+type Rank = "1" | "2" | "3" | "4" | "5" | "6" | "7" |
+    "8" | "9" | "10" | "?" | "#" | "%" | "*";
 
 type Card = {
     suit: Suit
     rank: Rank
-}
+};
 
-type Hand = {
-    name: string
-    rank: number
-    cards: Card[]
-}
-
-type Flush =
-    Hand & {
-        suit: Suit
-    }
-
-type Straight = Hand
-
-type FullHouse =
-    Hand & {
-        threeSuit: Suit
-        twoSuit: Suit
-    }
-
-interface H {
-    name: string
-    rank: number
-    cards: Card[]
-}
-
-interface Cool extends H {
-
-}
-
-const suits = [
-    'Clubs',
-    'Hearts',
-    'Diamonds',
-    'Spades'
+const suits: readonly Suit[] = [
+    "blue",
+    "black",
+    "orange"
 ] as const;
 
-const ranks = [
-    'Ace',
-    'Two',
-    'Three',
-    'Four',
-    'Five',
-    'Six',
-    'Seven',
-    'Eight',
-    'Nine',
-    'Ten',
-    'Jack',
-    '',
-    'Queen',
-    'King'
+// includes all but "*"
+const ranks: readonly Rank[] = [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "?",
+    "#",
+    "%"
 ] as const;
+
+type Flower = { suit: "black", rank: "*" };
+const flower: Flower = { suit: "black", rank: "*" };
 
 function deckOCards(): Card[] {
     let x: Card[] = [];
     suits.forEach(s => {
         ranks.forEach(r => {
-            if (r != '') {
-                x.push({ suit: s, rank: r })
-            }
+            x.push({ suit: s, rank: r });
         })
     });
+    x.push(flower);
     return x;
 }
 
@@ -164,21 +134,18 @@ window.onload = function () {
     let rows = 6;
     let cardsPerRow = 9;
 
-    drawCard(deck[0], 30, 50);
-    drawCard(deck[1], 40, 60);
-
-    //for (let i = 0; i < rows; i++) {
-    //    for (let j = 0; j < cardsPerRow; j++) {
-    //        let cardIndex = i * cardsPerRow + j;
-    //        if (cardIndex >= deck.length) {
-    //            break;
-    //        }
-    //        let card = deck[cardIndex];
-    //        let x = j * (cardWidth / 10);
-    //        let y = i * (cardHeight / 10);
-    //        drawCard(card, x, y);
-    //    }
-    //}
+    for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cardsPerRow; j++) {
+            let cardIndex = i * cardsPerRow + j;
+            if (cardIndex >= deck.length) {
+                break;
+            }
+            let card = deck[cardIndex];
+            let x = j * cardWidth;
+            let y = i * cardHeight + offsetY;
+            drawCard(card, x, y);
+        }
+    }
 
     // ctx.fillText(unicodeCard({ suit: 'Spades', rank: 'Ace' }), 0, (3 * canvas.height) / 4);
     // ctx.fillText(unicodeCard({ suit: 'Clubs', rank: 'Ace' }), fontWidth, (3 * canvas.height) / 4);
