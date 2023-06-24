@@ -1,66 +1,40 @@
 import * as util from "./util.js";
+import * as szs from "./szs.js";
 
-let WINDOW_RATIO = 3 / 2;
-type Suit = "blue" | "black" | "orange";
-type Rank = "1" | "2" | "3" | "4" | "5" | "6" | "7" |
-    "8" | "9" | "10" | "?" | "#" | "%" | "*";
-
-type Card = {
-    suit: Suit
-    rank: Rank
-};
-
-const suits: readonly Suit[] = [
-    "blue",
-    "black",
-    "orange"
-] as const;
-
-// includes all but "*"
-const ranks: readonly Rank[] = [
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-    "10",
-    "?",
-    "#",
-    "%"
-] as const;
-
-type Flower = { suit: "black", rank: "*" };
-const flower: Flower = { suit: "black", rank: "*" };
-
-function deckOCards(): Card[] {
-    let x: Card[] = [];
-    suits.forEach(s => {
-        ranks.forEach(r => {
-            x.push({ suit: s, rank: r });
-        })
-    });
-    x.push(flower);
-    return x;
-}
-
-function shuffleDeck(deck: Card[]): Card[] {
-    for (var i = deck.length - 1; i > 0; i--) {
-        var j = Math.floor(Math.random() * (i + 1));
-        var temp = deck[i];
-        deck[i] = deck[j];
-        deck[j] = temp;
-    }
-    return deck;
-}
+let WINDOW_RATIO = 2 / 3;
+let BOARD_WIDTH = 8;
+let BOARD_HEIGHT = 11
 
 type WidthHeight = {
     width: number,
     height: number,
 };
+
+
+function urlEncodeGame(game: szs.Game): string {
+    return encodeURIComponent(JSON.stringify(game));
+}
+
+function urlDecodeGame(gameStr: string): szs.Game {
+    return JSON.parse(decodeURIComponent(gameStr));
+}
+
+function goToGame(game: szs.Game) {
+    const gameStr = urlEncodeGame(game);
+    const url = new URL(window.location.href);
+    url.searchParams.set('game', gameStr);
+    history.pushState(null, '', url.toString());
+    window.dispatchEvent(new Event('load'));
+}
+
+function gameFromUrl(): szs.Game {
+    const url = new URL(window.location.href);
+    const gameStr = url.searchParams.get('game');
+    if (gameStr === null) {
+        throw new Error('No game in URL');
+    }
+    return urlDecodeGame(gameStr);
+}
 
 function calcWidthHeight(ratio: number, maxWidth: number, maxHeight: number): WidthHeight {
     let width = maxWidth;
@@ -75,82 +49,122 @@ function calcWidthHeight(ratio: number, maxWidth: number, maxHeight: number): Wi
     };
 }
 
-function suitRank(suit: Suit): number {
-    for (let i = 0; i < suits.length; i++) {
-        if (suits[i] == suit) {
-            return suits.length - i;
+function drawCell(
+    ctx: CanvasRenderingContext2D,
+    cell: szs.Cell,
+    cellState: szs.CellState,
+    x: number,
+    y: number,
+    cardWidth: number,
+    cardHeight: number) {
+    //
+    let cellBuf = 3;
+    let suitC = "orange"
+    let rankV = "";
+    if (cell != "empty") {
+        if (Array.isArray(cell)) {
+            suitC = cell[0].suit;
+            rankV = cell[0].rank;
+        } else {
+            suitC = cell.suit;
+            rankV = cell.rank;
         }
     }
-    throw new Error("Wtf?")
-}
 
-function rankRank(rank: Rank): number {
-    for (let i = 0; i < ranks.length; i++) {
-        if (ranks[i] == rank) {
-            return i + 1;
-        }
+    let canvas2: HTMLCanvasElement = document.createElement('canvas');
+    canvas2.width = cardWidth;
+    canvas2.height = cardHeight;
+    let ctx2: CanvasRenderingContext2D = canvas2.getContext('2d') as CanvasRenderingContext2D;
+
+    // Draw the background of the cell
+    ctx2.fillStyle = cell == "empty" ? 'rgb(144, 238, 144)' : 'white';
+    ctx2.fillRect(cellBuf, cellBuf, canvas2.width - 2 * cellBuf, canvas2.height - 2 * cellBuf);
+
+    // Now draw the stroke and text
+    ctx2.lineWidth = 2;
+    ctx2.strokeStyle = suitC;
+    if (cellState == "selected") {
+        ctx2.strokeStyle = 'rgb(0, 128, 0)';
+        ctx2.setLineDash([6, 2]);
     }
-    throw new Error("Wtf?")
+    ctx2.strokeRect(cellBuf, cellBuf, canvas2.width - 2 * cellBuf, canvas2.height - 2 * cellBuf);
+    ctx2.setLineDash([]);
+    ctx2.font = ctx.font;
+    ctx2.fillStyle = suitC;
+    let cardX = rankV.length == 2 ? cardWidth / 20 : cardWidth * 5 / 16;
+    ctx2.fillText(rankV, cardX, cardHeight * 3 / 4);
+    ctx.drawImage(canvas2, x, y);
 }
 
-function unicodeCard(card: Card): string {
-    let cardNum = suitRank(card.suit) * 16 + rankRank(card.rank)
-    let cardUnicode = 0x1F090 + cardNum
-    return String.fromCodePoint(cardUnicode)
+function renderGame(canvas: HTMLCanvasElement, game: szs.Game): WidthHeight {
+    let ctx = canvas.getContext("2d");
+    let fontSize = canvas.width / (BOARD_HEIGHT + 1);
+    ctx.font = fontSize.toString() + 'px monospace';
+    ctx.fillStyle = 'black';
+    let cardWidth = canvas.width / BOARD_WIDTH;
+    let cardHeight = canvas.height / BOARD_HEIGHT;
+
+    for (let i = 0; i < game.board.length; i++) {
+        let t = game.board[i];
+        let x = (i % BOARD_WIDTH) * cardWidth;
+        let y = (Math.floor(i / BOARD_WIDTH) * cardHeight);
+        let cellState: szs.CellState = game.currentTile == i ? "selected" : "none"
+        drawCell(ctx, t.cell, cellState, x, y, cardWidth, cardHeight);
+    }
+    return { width: cardWidth, height: cardHeight };
+}
+
+function boardIdxFromCoord(cellWH: WidthHeight, x: number, y: number): number {
+    let cardWidth = cellWH.width;
+    let cardHeight = cellWH.height;
+    let column = Math.floor(x / cardWidth);
+    let row = Math.floor(y / cardHeight);
+    let index = row * BOARD_WIDTH + column;
+    return index;
 }
 
 window.onload = function () {
     console.log("mad dude: " + util.getMessage());
     let canvasDims = calcWidthHeight(WINDOW_RATIO, window.innerWidth, window.innerHeight);
+    // Some rigermerole to create a new or replace the canvas
+    let container = document.getElementById("MainCanvasContainer");
+    let newCanvas = document.createElement('canvas');
     let canvas = document.getElementById("MainCanvas") as HTMLCanvasElement;
-    let ctx = canvas.getContext("2d");
+    if (!canvas) {
+        container.appendChild(newCanvas);
+    } else {
+        canvas.parentNode.replaceChild(newCanvas, canvas);
+    }
+    canvas = newCanvas;
+    canvas.id = 'MainCanvas';
     canvas.width = canvasDims.width;
     canvas.height = canvasDims.height;
 
-    let fontSize = canvas.height / 10
-    ctx.font = fontSize.toString() + 'px serif';
-
-    // Set the fill color
-    ctx.fillStyle = 'black';
-
-    // Draw the card character
-    const cardCharacter = String.fromCodePoint(0x1F0D4);
-    //ctx.fillText(cardCharacter, 0, (3 * canvas.height) / 4);
-
-    let fontWidth = fontSize * 0.87
-
-    function drawCard(card: Card, x: number, y: number) {
-        console.log(card);
-        ctx.fillText(unicodeCard(card), x, y);
+    let game: szs.Game;
+    try {
+        game = gameFromUrl();
+    } catch (error) {
+        console.log("Could not parse game from url, creating a new one");
+        game = szs.newGame(BOARD_WIDTH, BOARD_HEIGHT);
     }
 
-    //let deck = shuffleDeck(deckOCards());
-    let deck = deckOCards();
-    let width = canvas.width;
-    let height = canvas.height;
-    let cardWidth = width / 10;
-    let cardHeight = height / 6;
-    let offsetY = cardHeight * 2 / 3;
-    let rows = 6;
-    let cardsPerRow = 9;
+    let tileWH = renderGame(canvas, game);
 
-    for (let i = 0; i < rows; i++) {
-        for (let j = 0; j < cardsPerRow; j++) {
-            let cardIndex = i * cardsPerRow + j;
-            if (cardIndex >= deck.length) {
-                break;
-            }
-            let card = deck[cardIndex];
-            let x = j * cardWidth;
-            let y = i * cardHeight + offsetY;
-            drawCard(card, x, y);
+    canvas.addEventListener('click', function (event) {
+        let rect = canvas.getBoundingClientRect();
+        let x = event.clientX - rect.left;
+        let y = event.clientY - rect.top;
+        let tileNum = boardIdxFromCoord(tileWH, x, y);
+        let tile = game.board[tileNum];
+        if (tile.cell == "empty"
+            && game.currentTile
+            && game.board[game.currentTile]
+            && game.board[game.currentTile].cell != "empty") {
+
+            game.board[tileNum].cell = game.board[game.currentTile].cell;
+            game.board[game.currentTile].cell = "empty";
         }
-    }
-
-    // ctx.fillText(unicodeCard({ suit: 'Spades', rank: 'Ace' }), 0, (3 * canvas.height) / 4);
-    // ctx.fillText(unicodeCard({ suit: 'Clubs', rank: 'Ace' }), fontWidth, (3 * canvas.height) / 4);
-    // ctx.fillText(unicodeCard({ suit: 'Diamonds', rank: 'Ace' }), 2 * fontWidth, (3 * canvas.height) / 4);
-    // ctx.fillText(unicodeCard({ suit: 'Hearts', rank: 'Ace' }), 3 * fontWidth, (3 * canvas.height) / 4);
-    // ctx.fillText(unicodeCard({ suit: 'Hearts', rank: 'Two' }), 4 * fontWidth, (3 * canvas.height) / 4);
-
+        game.currentTile = tileNum;
+        goToGame(game);
+    });
 }
