@@ -49,10 +49,26 @@ function calcWidthHeight(ratio: number, maxWidth: number, maxHeight: number): Wi
     };
 }
 
+function fillStyle(cell: szs.Cell) {
+    if (cell.tile != 'empty') {
+        return 'white';
+    } else {
+        switch (cell.kind) {
+            case "exit":
+                return 'rgb(220,220,220)';
+            case "null":
+                return 'rgb(220,220,220)';
+            default:
+                // blank, green
+                return 'rgb(144,238,144)';
+        }
+
+    }
+}
+
 function drawCell(
     ctx: CanvasRenderingContext2D,
     cell: szs.Cell,
-    cellState: szs.CellState,
     x: number,
     y: number,
     cardWidth: number,
@@ -61,13 +77,13 @@ function drawCell(
     let cellBuf = 3;
     let suitC = "orange"
     let rankV = "";
-    if (cell != "empty") {
-        if (Array.isArray(cell)) {
-            suitC = cell[0].suit;
-            rankV = cell[0].rank;
+    if (cell.tile != "empty") {
+        if (Array.isArray(cell.tile)) {
+            suitC = cell.tile[0].suit;
+            rankV = cell.tile[0].rank;
         } else {
-            suitC = cell.suit;
-            rankV = cell.rank;
+            suitC = cell.tile.suit;
+            rankV = cell.tile.rank;
         }
     }
 
@@ -77,13 +93,13 @@ function drawCell(
     let ctx2: CanvasRenderingContext2D = canvas2.getContext('2d') as CanvasRenderingContext2D;
 
     // Draw the background of the cell
-    ctx2.fillStyle = cell == "empty" ? 'rgb(144, 238, 144)' : 'white';
+    ctx2.fillStyle = fillStyle(cell);
     ctx2.fillRect(cellBuf, cellBuf, canvas2.width - 2 * cellBuf, canvas2.height - 2 * cellBuf);
 
     // Now draw the stroke and text
     ctx2.lineWidth = 2;
     ctx2.strokeStyle = suitC;
-    if (cellState == "selected") {
+    if (cell.tileState == "selected") {
         ctx2.strokeStyle = 'rgb(0, 128, 0)';
         ctx2.setLineDash([6, 2]);
     }
@@ -105,11 +121,10 @@ function renderGame(canvas: HTMLCanvasElement, game: szs.Game): WidthHeight {
     let cardHeight = canvas.height / BOARD_HEIGHT;
 
     for (let i = 0; i < game.board.length; i++) {
-        let t = game.board[i];
+        let c = game.board[i];
         let x = (i % BOARD_WIDTH) * cardWidth;
         let y = (Math.floor(i / BOARD_WIDTH) * cardHeight);
-        let cellState: szs.CellState = game.currentTile == i ? "selected" : "none"
-        drawCell(ctx, t.cell, cellState, x, y, cardWidth, cardHeight);
+        drawCell(ctx, c, x, y, cardWidth, cardHeight);
     }
     return { width: cardWidth, height: cardHeight };
 }
@@ -148,23 +163,23 @@ window.onload = function () {
         game = szs.newGame(BOARD_WIDTH, BOARD_HEIGHT);
     }
 
-    let tileWH = renderGame(canvas, game);
+    let cellWH = renderGame(canvas, game);
 
     canvas.addEventListener('click', function (event) {
         let rect = canvas.getBoundingClientRect();
         let x = event.clientX - rect.left;
         let y = event.clientY - rect.top;
-        let tileNum = boardIdxFromCoord(tileWH, x, y);
-        let tile = game.board[tileNum];
-        if (tile.cell == "empty"
-            && game.currentTile
-            && game.board[game.currentTile]
-            && game.board[game.currentTile].cell != "empty") {
+        let cellNum = boardIdxFromCoord(cellWH, x, y);
+        let cell = game.board[cellNum];
+        if (cell.tile == "empty"
+            && game.currentCell
+            && game.board[game.currentCell]
+            && game.board[game.currentCell].tile != "empty") {
 
-            game.board[tileNum].cell = game.board[game.currentTile].cell;
-            game.board[game.currentTile].cell = "empty";
+            game.board[cellNum].tile = game.board[game.currentCell].tile;
+            game.board[game.currentCell].tile = "empty";
         }
-        game.currentTile = tileNum;
+        game.currentCell = cellNum;
         goToGame(game);
     });
 }

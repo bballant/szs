@@ -35,26 +35,26 @@ type Flower = { suit: "black", rank: "*" };
 
 const flower: Flower = { suit: "black", rank: "*" };
 
-export type Cell = Card | Card[] | "empty"
+export type Tile = Card | Card[] | "empty"
 
-export type TileKind =
+export type CellKind =
     "exit" | // first three files in top row
-    "null" | // the fourth tile in top row, unusable
-    "flower" | // the fifthe tile, only holds the flower (*)
-    "run" | // last 4 tiles, top row, holds 1-10 of same suit
-    "board"; // rest of the tiles
+    "null" | // the fourth cell in top row, unusable
+    "flower" | // the fifthe cell, only holds the flower (*)
+    "run" | // last 4 cells, top row, holds 1-10 of same suit
+    "board"; // rest of the cells
 
-export type CellState = "selected" | "none"
+export type TileState = "selected" | "none"
 
-export type Tile = {
-    kind: TileKind,
-    cell: Cell,
-    cellState: CellState,
+export type Cell = {
+    kind: CellKind,
+    tile: Tile,
+    tileState: TileState,
 }
 
 export type Game = {
-    currentTile: number;
-    board: Tile[];
+    currentCell: number;
+    board: Cell[];
 }
 
 function deckOCards(): Card[] {
@@ -78,39 +78,39 @@ function shuffleDeck(deck: Card[]): Card[] {
     return deck;
 }
 
-function newEmpty(tileKind: TileKind): Tile {
+function newEmpty(cellKind: CellKind): Cell {
     return {
-        kind: tileKind,
-        cell: "empty",
-        cellState: "none",
+        kind: cellKind,
+        tile: "empty",
+        tileState: "none",
     }
 }
 
 export function newGame(boardWidth: number, boardHeight: number): Game {
     let deck = shuffleDeck(deckOCards());
-    let tiles: Tile[] = [];
+    let cells: Cell[] = [];
 
     // Top Row
-    tiles[0] = newEmpty("exit");
-    tiles[1] = newEmpty("exit");
-    tiles[2] = newEmpty("exit");
-    tiles[3] = newEmpty("null");
-    tiles[4] = newEmpty("flower");
-    tiles[5] = newEmpty("run");
-    tiles[6] = newEmpty("run");
-    tiles[7] = newEmpty("run");
+    cells[0] = newEmpty("exit");
+    cells[1] = newEmpty("exit");
+    cells[2] = newEmpty("exit");
+    cells[3] = newEmpty("null");
+    cells[4] = newEmpty("flower");
+    cells[5] = newEmpty("run");
+    cells[6] = newEmpty("run");
+    cells[7] = newEmpty("run");
 
     for (let i = 8; i < boardWidth * boardHeight; i++) {
         let deckIdx = i - boardWidth;
         if (deckIdx < deck.length) {
-            tiles.push({
+            cells.push({
                 kind: "board",
-                cell: deck[deckIdx],
-                cellState: "none"
+                tile: deck[deckIdx],
+                tileState: "none"
             });
             continue;
         }
-        tiles.push(newEmpty("board"));
+        cells.push(newEmpty("board"));
     }
-    return { currentTile: -1, board: tiles };
+    return { currentCell: -1, board: cells };
 }
