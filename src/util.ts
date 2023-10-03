@@ -1,2 +1,2 @@
 
-export function getMessage(): string { return "Hello World!" }
+export function getMessage(): string { return "Hello Morld!" }

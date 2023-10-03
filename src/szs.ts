@@ -4,8 +4,16 @@ export type Rank = "1" | "2" | "3" | "4" | "5" | "6" | "7" |
     "8" | "9" | "10" | "?" | "#" | "%" | "*";
 
 export type Card = {
-    suit: Suit
-    rank: Rank
+    suit: Suit,
+    rank: Rank,
+};
+
+// Rectangle Object for a Card
+export type CardRect = {
+    x: number,
+    y: number,
+    width: number,
+    height: number,
 };
 
 export const suits: readonly Suit[] = [
@@ -53,8 +61,8 @@ export type Cell = {
 }
 
 export type Game = {
-    currentCell: number;
-    board: Cell[];
+    currentCell: number,
+    board: Cell[],
 }
 
 function deckOCards(): Card[] {
