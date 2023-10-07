@@ -17,3 +17,15 @@
 .board {
     color: rgb(109, 197, 255);
 }
+
+.suit-green {
+    color: rgb(14, 214, 41);
+}
+
+.suit-blue {
+    color: rgb(49, 99, 206);
+}
+
+.suit-black {
+    color: rgb(0, 0, 0);
+}

@@ -52,18 +52,6 @@ function fillStyle(cellKind) {
             return 'rgb(200,200,200)';
     }
 }
-function drawEmptyCell(ctx, cell) {
-    let canvas2 = document.createElement('canvas');
-    return canvas2;
-}
-function drawArrayOfCards(ctx, cell) {
-    let canvas2 = document.createElement('canvas');
-    return canvas2;
-}
-function drawCard(ctx, cell) {
-    let canvas2 = document.createElement('canvas');
-    return canvas2;
-}
 function drawCellBackground(ctx, cell, x, y, cardWidth, cardHeight) {
     let canvas2 = document.createElement('canvas');
     canvas2.width = cardWidth;
@@ -75,19 +63,99 @@ function drawCellBackground(ctx, cell, x, y, cardWidth, cardHeight) {
     ctx2.fillRect(cellBuf, cellBuf, canvas2.width - 2 * cellBuf, canvas2.height - 2 * cellBuf);
     ctx.drawImage(canvas2, x, y);
 }
+function drawAvailableCell(ctx, cell, x, y, cardWidth, cardHeight) {
+    let canvas2 = document.createElement('canvas');
+    canvas2.width = cardWidth;
+    canvas2.height = cardHeight;
+    let ctx2 = canvas2.getContext('2d');
+    ctx2.strokeStyle = 'rgb(0, 128, 0)';
+    ctx2.strokeStyle = 'black';
+    ctx2.setLineDash([6, 2]);
+    let cellBuf = 3;
+    ctx2.strokeRect(cellBuf, cellBuf, cardWidth - 2 * cellBuf, cardHeight - 2 * cellBuf);
+    ctx.drawImage(canvas2, x, y);
+}
+function isCard(tile) {
+    return tile.suit !== undefined &&
+        tile.rank !== undefined &&
+        !Array.isArray(tile);
+}
+function canPlaceCard(board, idx, card) {
+    let cell = board[idx];
+    if (cell.tile == "empty") {
+        switch (cell.kind) {
+            case "null":
+                return false;
+            case "run":
+            case "exit":
+                return true;
+            case "flower":
+                return (card.rank == "*");
+            case "board":
+                let prev = idx - BOARD_WIDTH;
+                if (prev < BOARD_WIDTH) {
+                    return true;
+                }
+                else {
+                    let prevCell = board[prev];
+                    if (isCard(prevCell.tile)) {
+                        let prevCard = prevCell.tile;
+                        let prevRank = parseInt(prevCard.rank, 10);
+                        let currRank = parseInt(card.rank, 10);
+                        if (isNaN(prevRank) || isNaN(currRank)) {
+                            return false;
+                        }
+                        return prevCard.suit != card.suit && currRank === prevRank + 1;
+                    }
+                    return false;
+                }
+        }
+    }
+    return false;
+}
+function drawCardSuit(cardCtx, suit) {
+    let w = cardCtx.canvas.width;
+    let h = cardCtx.canvas.height;
+    let m = (w + h) * 0.08;
+    cardCtx.beginPath();
+    switch (suit) {
+        case "black":
+            cardCtx.fillStyle = 'rgb(0,0,0,.2)';
+            cardCtx.strokeStyle = 'rgb(0,0,0,.3)';
+            cardCtx.moveTo(w / 2, m);
+            cardCtx.lineTo(w - m, h / 2);
+            cardCtx.lineTo(w / 2, h - m);
+            cardCtx.lineTo(m, h / 2);
+            cardCtx.lineTo(w / 2, m);
+            break;
+        case "blue":
+            cardCtx.fillStyle = 'rgb(49,99,206,.2)';
+            cardCtx.strokeStyle = 'rgb(49,99,206,.3)';
+            // Draw circle
+            cardCtx.arc(w / 2, h / 2, Math.min(w, h) / 2 - m, 0, 2 * Math.PI);
+            break;
+        case "green":
+            cardCtx.fillStyle = 'rgb(14,214,41,.2)';
+            cardCtx.strokeStyle = 'rgb(14,214,41,.3)';
+            cardCtx.rect(m * 1.5, m * 1.5, w - (3 * m), h - (3 * m));
+            break;
+    }
+    cardCtx.closePath();
+    cardCtx.fill();
+    cardCtx.stroke();
+}
 function drawCellCard(ctx, cell, x, y, cardWidth, cardHeight) {
     if (cell.tile == "empty")
         return;
-    let suitC = "orange";
-    let rankV = "";
+    let card = undefined;
     if (Array.isArray(cell.tile)) {
-        suitC = cell.tile[0].suit;
-        rankV = cell.tile[0].rank;
+        card = cell.tile[0];
     }
     else {
-        suitC = cell.tile.suit;
-        rankV = cell.tile.rank;
+        card = cell.tile;
     }
+    let suitC = card.suit;
+    let rankV = card.rank;
     let canvas2 = document.createElement('canvas');
     canvas2.width = cardWidth;
     canvas2.height = cardHeight;
@@ -100,19 +168,18 @@ function drawCellCard(ctx, cell, x, y, cardWidth, cardHeight) {
     if (cell.tileState == "selected") {
         ctx2.strokeStyle = 'rgb(0, 128, 0)';
         ctx2.setLineDash([6, 2]);
-        console.log("here");
-        console.log(cell);
     }
     ctx2.strokeRect(cellBuf, cellBuf, canvas2.width - 2 * cellBuf, canvas2.height - 2 * cellBuf);
     ctx2.font = ctx.font;
     ctx2.fillStyle = suitC;
-    let cardX = rankV.length == 2 ? cardWidth / 20 : cardWidth * 5 / 16;
-    ctx2.fillText(rankV, cardX, cardHeight * 3 / 4);
+    let cardX = rankV.length == 2 ? cardWidth * .09 : cardWidth * .31;
+    ctx2.fillText(rankV, cardX, cardHeight * .7);
+    drawCardSuit(ctx2, suitC);
     ctx.drawImage(canvas2, x, y);
 }
 function renderGame(canvas, game) {
     let ctx = canvas.getContext("2d");
-    let fontSize = canvas.width / (BOARD_HEIGHT + 1);
+    let fontSize = (canvas.width / (BOARD_HEIGHT + 1)) * .9;
     ctx.font = fontSize.toString() + 'px monospace';
     ctx.fillStyle = 'black';
     let cardWidth = canvas.width / BOARD_WIDTH;
@@ -123,6 +190,10 @@ function renderGame(canvas, game) {
         let x = (i % BOARD_WIDTH) * cardWidth;
         let y = (Math.floor(i / BOARD_WIDTH) * cardHeight);
         drawCellBackground(ctx, c, x, y, cardWidth, cardHeight);
+        let currentCell = game.board[game.currentCell];
+        if (isCard(currentCell.tile) && canPlaceCard(game.board, i, currentCell)) {
+            drawAvailableCell(ctx, c, x, y, cardWidth, cardHeight);
+        }
         drawCellCard(ctx, c, x, y, cardWidth, cardHeight);
     }
     return { width: cardWidth, height: cardHeight };
@@ -177,7 +248,9 @@ window.onload = function () {
             game.board[game.currentCell].tileState = "none";
         }
         else {
-            game.board[game.currentCell].tileState = "none";
+            if (game.board[game.currentCell]) {
+                game.board[game.currentCell].tileState = "none";
+            }
             game.board[cellNum].tileState = "selected";
         }
         game.currentCell = cellNum;
