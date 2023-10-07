@@ -80,17 +80,27 @@ function isCard(tile) {
         tile.rank !== undefined &&
         !Array.isArray(tile);
 }
+function isNextRank(rank, maybeNextRank) {
+    let rankNum = parseInt(rank, 10);
+    let nextRankNum = parseInt(maybeNextRank, 10);
+    if (isNaN(rankNum) || isNaN(nextRankNum)) {
+        return false;
+    }
+    return rankNum + 1 == nextRankNum;
+}
 function canPlaceCard(board, idx, card) {
     let cell = board[idx];
     if (cell.tile == "empty") {
+        if (cell.kind == "flower" && card.rank == "*") {
+            return true;
+        }
         switch (cell.kind) {
-            case "null":
-                return false;
             case "run":
             case "exit":
                 return true;
             case "flower":
-                return (card.rank == "*");
+            case "null":
+                return false;
             case "board":
                 let prev = idx - BOARD_WIDTH;
                 if (prev < BOARD_WIDTH) {
@@ -98,17 +108,18 @@ function canPlaceCard(board, idx, card) {
                 }
                 else {
                     let prevCell = board[prev];
-                    if (isCard(prevCell.tile)) {
-                        let prevCard = prevCell.tile;
-                        let prevRank = parseInt(prevCard.rank, 10);
-                        let currRank = parseInt(card.rank, 10);
-                        if (isNaN(prevRank) || isNaN(currRank)) {
-                            return false;
-                        }
-                        return prevCard.suit != card.suit && currRank === prevRank + 1;
-                    }
-                    return false;
+                    return isCard(prevCell.tile) &&
+                        prevCell.tile.suit != card.suit &&
+                        isNextRank(prevCell.tile.rank, card.rank);
                 }
+        }
+    }
+    else { // cell not empty
+        if (cell.kind == "run" &&
+            isCard(cell.tile) &&
+            cell.tile.suit == card.suit &&
+            isNextRank(cell.tile.rank, card.rank)) {
+            return true;
         }
     }
     return false;
@@ -166,7 +177,6 @@ function drawCellCard(ctx, cell, x, y, cardWidth, cardHeight) {
     ctx2.lineWidth = 2;
     ctx2.strokeStyle = suitC;
     if (cell.tileState == "selected") {
-        ctx2.strokeStyle = 'rgb(0, 128, 0)';
         ctx2.setLineDash([6, 2]);
     }
     ctx2.strokeRect(cellBuf, cellBuf, canvas2.width - 2 * cellBuf, canvas2.height - 2 * cellBuf);
@@ -191,7 +201,7 @@ function renderGame(canvas, game) {
         let y = (Math.floor(i / BOARD_WIDTH) * cardHeight);
         drawCellBackground(ctx, c, x, y, cardWidth, cardHeight);
         let currentCell = game.board[game.currentCell];
-        if (isCard(currentCell.tile) && canPlaceCard(game.board, i, currentCell)) {
+        if (isCard(currentCell.tile) && canPlaceCard(game.board, i, currentCell.tile)) {
             drawAvailableCell(ctx, c, x, y, cardWidth, cardHeight);
         }
         drawCellCard(ctx, c, x, y, cardWidth, cardHeight);
