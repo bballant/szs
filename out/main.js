@@ -1,8 +1,8 @@
 import * as util from "./util.js";
 import * as szs from "./szs.js";
-let WINDOW_RATIO = 2 / 3;
+let BOARD_HEIGHT = 15;
 let BOARD_WIDTH = 8;
-let BOARD_HEIGHT = 11;
+let WINDOW_RATIO = BOARD_WIDTH / BOARD_HEIGHT;
 function urlEncodeGame(game) {
     return encodeURIComponent(JSON.stringify(game));
 }
@@ -27,10 +27,6 @@ function gameFromUrl() {
 function calcWidthHeight(ratio, maxWidth, maxHeight) {
     let width = maxWidth;
     let height = Math.round(maxWidth / ratio);
-    if (height > maxHeight) {
-        height = maxHeight;
-        width = Math.round(maxHeight * ratio);
-    }
     return {
         width: width,
         height: height,
@@ -47,7 +43,8 @@ function fillStyle(cellKind) {
         case "run":
             return 'rgb(144,238,144)';
         case "board":
-            return 'rgb(109, 197, 255)';
+            //return 'rgb(109, 197, 255)';
+            return 'rgb(230, 243, 252)';
         default:
             return 'rgb(200,200,200)';
     }
@@ -110,7 +107,7 @@ function canPlaceCard(board, idx, card) {
                     let prevCell = board[prev];
                     return isCard(prevCell.tile) &&
                         prevCell.tile.suit != card.suit &&
-                        isNextRank(prevCell.tile.rank, card.rank);
+                        isNextRank(card.rank, prevCell.tile.rank);
                 }
         }
     }
@@ -182,18 +179,20 @@ function drawCellCard(ctx, cell, x, y, cardWidth, cardHeight) {
     ctx2.strokeRect(cellBuf, cellBuf, canvas2.width - 2 * cellBuf, canvas2.height - 2 * cellBuf);
     ctx2.font = ctx.font;
     ctx2.fillStyle = suitC;
-    let cardX = rankV.length == 2 ? cardWidth * .09 : cardWidth * .31;
-    ctx2.fillText(rankV, cardX, cardHeight * .7);
+    let fontSize = cardWidth * .5;
+    let cardX = rankV.length == 2 ? fontSize - (2 * fontSize / 3) : fontSize - (fontSize / 3);
+    let cardY = fontSize + (fontSize / 3);
+    ctx2.fillText(rankV, cardX + 1, cardY + 1);
     drawCardSuit(ctx2, suitC);
     ctx.drawImage(canvas2, x, y);
 }
 function renderGame(canvas, game) {
     let ctx = canvas.getContext("2d");
-    let fontSize = (canvas.width / (BOARD_HEIGHT + 1)) * .9;
-    ctx.font = fontSize.toString() + 'px monospace';
-    ctx.fillStyle = 'black';
     let cardWidth = canvas.width / BOARD_WIDTH;
     let cardHeight = canvas.height / BOARD_HEIGHT;
+    let fontSize = cardWidth * .5;
+    ctx.font = fontSize.toString() + 'px monospace';
+    ctx.fillStyle = 'black';
     // draw the background
     for (let i = 0; i < game.board.length; i++) {
         let c = game.board[i];
@@ -201,7 +200,9 @@ function renderGame(canvas, game) {
         let y = (Math.floor(i / BOARD_WIDTH) * cardHeight);
         drawCellBackground(ctx, c, x, y, cardWidth, cardHeight);
         let currentCell = game.board[game.currentCell];
-        if (isCard(currentCell.tile) && canPlaceCard(game.board, i, currentCell.tile)) {
+        if (currentCell &&
+            isCard(currentCell.tile) &&
+            canPlaceCard(game.board, i, currentCell.tile)) {
             drawAvailableCell(ctx, c, x, y, cardWidth, cardHeight);
         }
         drawCellCard(ctx, c, x, y, cardWidth, cardHeight);
@@ -218,8 +219,7 @@ function boardIdxFromCoord(cellWH, x, y) {
 }
 window.onload = function () {
     console.log("mad dude: " + util.getMessage());
-    let canvasDims = calcWidthHeight(WINDOW_RATIO, window.innerWidth, window.innerHeight);
-    // Some rigermerole to create a new or replace the canvas
+    let canvasDims = calcWidthHeight(WINDOW_RATIO, window.innerWidth - 20, window.innerHeight);
     let container = document.getElementById("MainCanvasContainer");
     let newCanvas = document.createElement('canvas');
     let canvas = document.getElementById("MainCanvas");
